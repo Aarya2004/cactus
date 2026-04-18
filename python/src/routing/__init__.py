@@ -4,6 +4,7 @@ from .context import RoutingContext
 from .actions import RoutingAction
 from .policy import RoutingPolicy, PolicyResult
 from .router import CactusRouter
+from .pii import PIIStripper, PIIProfile
 
 __all__ = [
     "RoutingContext",
@@ -11,4 +12,6 @@ __all__ = [
     "RoutingPolicy",
     "PolicyResult",
     "CactusRouter",
+    "PIIStripper",
+    "PIIProfile",
 ]
