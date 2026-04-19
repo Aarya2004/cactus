@@ -199,7 +199,7 @@ result = handler.complete(
     pii_profile=PIIProfile(patient_name="John Doe", medications=["lisinopril"]),
 )
 print(result.action)             # CLOUD_PII_STRIP
-print(result.anonymized_query)   # "[PATIENT] takes [DRUG_A] [DOSE]"
+print(result.anonymized_query)   # "[PATIENT] takes lisinopril 10mg"
 print(result.cloud_payload_mode) # "stripped"
 ```
 
@@ -236,7 +236,19 @@ auditability.
 
 ## PII Stripping
 
-Best-effort anonymization for cloud fallback:
+Best-effort anonymization for cloud fallback. Strips **identity** info and
+preserves **medically relevant** info so the cloud model can give useful
+answers.
+
+**Stripped** (identity PII):
+- Patient name, additional names (family, doctors)
+- Fine-grained locations (clinics, hospitals — via `PIIProfile.fine_locations`)
+- Street addresses, phone numbers (E.164 + North American), emails, SSNs
+
+**Preserved** (medically relevant):
+- Medications, supplements (general drug names)
+- Dosages, age, times (critical for medical advice)
+- City/state (regional formularies, altitude, climate — too coarse to identify)
 
 ```python
 from src.routing import PIIStripper, PIIProfile
@@ -246,15 +258,17 @@ profile = PIIProfile(
     patient_name="Sarah Johnson",
     medications=["lisinopril", "atorvastatin"],
     supplements=["fish oil", "vitamin D"],
+    fine_locations=["St. Michael's Hospital"],
 )
 
-text = "Sarah Johnson, 62 years old, takes lisinopril 10mg at 8am"
+text = "Sarah Johnson at St. Michael's Hospital in Toronto, 62 years old, takes lisinopril 10mg at 8am"
 anonymized = stripper.strip(text, profile)
-# "[PATIENT], [AGE], takes [DRUG_A] [DOSE] at [TIME]"
+# "[PATIENT] at [FACILITY_A] in Toronto, 62 years old, takes lisinopril 10mg at 8am"
 ```
 
-PII stripping is best-effort. Drugs / conditions not listed in the profile
-may pass through — treat `STRIPPED` as defense-in-depth, not a guarantee.
+PII stripping is best-effort. Facilities not listed in the profile and
+other identifying details may pass through — treat `STRIPPED` as
+defense-in-depth, not a guarantee.
 
 ## Signal Providers
 
