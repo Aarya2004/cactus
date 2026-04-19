@@ -90,9 +90,10 @@ class TestRoutedCompletionHandler(unittest.TestCase):
         self.assertEqual(result.action, RoutingAction.CLOUD_PII_STRIP)
         self.assertIsNotNone(result.anonymized_query)
         self.assertNotIn("John Doe", result.anonymized_query)
-        self.assertNotIn("lisinopril", result.anonymized_query)
         self.assertIn("[PATIENT]", result.anonymized_query)
-        self.assertIn("[DRUG_A]", result.anonymized_query)
+        # Medical info preserved — cloud needs it to give useful answers
+        self.assertIn("lisinopril", result.anonymized_query)
+        self.assertIn("10mg", result.anonymized_query)
 
     def test_refuse_returns_safe_message(self):
         router = CactusRouter()
