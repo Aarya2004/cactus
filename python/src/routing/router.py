@@ -11,6 +11,12 @@ class CactusRouter:
         self._policies: list[tuple[RoutingPolicy, float]] = []
 
     def register(self, policy: RoutingPolicy, weight: float = 1.0) -> None:
+        if weight <= 0.0:
+            raise ValueError(
+                f"weight must be positive, got {weight}. "
+                "Zero or negative weights would silently disable the policy's vote "
+                "or invert it, producing surprising ensemble outcomes."
+            )
         self._policies.append((policy, weight))
 
     def unregister(self, name: str) -> None:

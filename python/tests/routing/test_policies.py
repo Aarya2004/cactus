@@ -132,6 +132,31 @@ class TestLatencyBudgetPolicy(unittest.TestCase):
         self.assertIn("latency_pressure", scores)
         self.assertIn("network_score", scores)
 
+    def test_local_latency_exceeds_budget_routes_cloud(self):
+        """If on-device inference can't meet the latency budget, cloud wins
+        despite network overhead — the budget is the constraint, not the device."""
+        policy = LatencyBudgetPolicy(local_latency_ms=2000)
+        ctx = RoutingContext(
+            query="test",
+            confidence=0.3,
+            latency_budget_ms=500,
+            network_quality="fast",
+        )
+        scores = policy.score(ctx)
+        self.assertIn("local_latency_pressure", scores)
+        self.assertEqual(policy.decide(scores), RoutingAction.CLOUD)
+
+    def test_local_latency_within_budget_prefers_local(self):
+        policy = LatencyBudgetPolicy(local_latency_ms=100)
+        ctx = RoutingContext(
+            query="test",
+            confidence=0.9,
+            latency_budget_ms=500,
+            network_quality="fast",
+        )
+        scores = policy.score(ctx)
+        self.assertEqual(policy.decide(scores), RoutingAction.LOCAL)
+
 
 if __name__ == "__main__":
     unittest.main()

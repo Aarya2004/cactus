@@ -140,5 +140,23 @@ class TestRouterBackwardCompat(unittest.TestCase):
         self.assertEqual(router.route(below).action, RoutingAction.CLOUD)
 
 
+class TestRouterWeightValidation(unittest.TestCase):
+
+    def test_zero_weight_is_rejected(self):
+        router = CactusRouter()
+        with self.assertRaises(ValueError):
+            router.register(AlwaysLocalPolicy(), weight=0.0)
+
+    def test_negative_weight_is_rejected(self):
+        router = CactusRouter()
+        with self.assertRaises(ValueError):
+            router.register(AlwaysLocalPolicy(), weight=-0.5)
+
+    def test_positive_weight_is_accepted(self):
+        router = CactusRouter()
+        router.register(AlwaysLocalPolicy(), weight=0.01)
+        self.assertEqual(len(router.policies), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
