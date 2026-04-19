@@ -133,6 +133,99 @@ class TestRoutedCompletionHandler(unittest.TestCase):
         self.assertIn("Local says safe", result.response)
         self.assertIn("Verified by cloud", result.response)
 
+    def test_cascade_defaults_to_raw_payload(self):
+        """CASCADE verifies local output with cloud. Default sends the raw
+        query so the verifier sees the actual question — PII stripping
+        should only apply when the app opts in or the action is CLOUD_PII_STRIP."""
+        router = CactusRouter()
+        router.register(ClinicalPolicy())
+
+        sent_to_cloud = []
+
+        def capture_cloud(query: str) -> str:
+            sent_to_cloud.append(query)
+            return "Cloud verdict"
+
+        handler = RoutedCompletionHandler(
+            router=router,
+            local_complete=lambda q: ("Local verdict", 0.8),
+            cloud_complete=capture_cloud,
+            signal_provider=self.signals,
+        )
+
+        profile = PIIProfile(patient_name="John Doe", medications=["lisinopril"])
+        result = handler.complete(
+            "John Doe asks about ibuprofen with lisinopril",
+            pii_profile=profile,
+            metadata={"clinical_severity": "MAJOR"},
+        )
+
+        self.assertEqual(result.action, RoutingAction.CASCADE)
+        self.assertEqual(len(sent_to_cloud), 1)
+        self.assertIn("John Doe", sent_to_cloud[0])
+        self.assertEqual(result.cloud_payload_mode, "raw")
+
+    def test_cascade_strips_pii_when_configured(self):
+        """Apps with stricter privacy policies can force CASCADE to use stripped payloads."""
+        from src.routing.integration import CloudPayloadMode
+
+        router = CactusRouter()
+        router.register(ClinicalPolicy())
+
+        sent_to_cloud = []
+
+        def capture_cloud(query: str) -> str:
+            sent_to_cloud.append(query)
+            return "Cloud verdict"
+
+        handler = RoutedCompletionHandler(
+            router=router,
+            local_complete=lambda q: ("Local verdict", 0.8),
+            cloud_complete=capture_cloud,
+            signal_provider=self.signals,
+            cloud_payload_mode_by_action={
+                RoutingAction.CASCADE: CloudPayloadMode.STRIPPED,
+            },
+        )
+
+        profile = PIIProfile(patient_name="John Doe", medications=["lisinopril"])
+        result = handler.complete(
+            "John Doe asks about ibuprofen with lisinopril",
+            pii_profile=profile,
+            metadata={"clinical_severity": "MAJOR"},
+        )
+
+        self.assertEqual(result.action, RoutingAction.CASCADE)
+        self.assertNotIn("John Doe", sent_to_cloud[0])
+        self.assertIn("[PATIENT]", sent_to_cloud[0])
+        self.assertEqual(result.cloud_payload_mode, "stripped")
+        self.assertIsNotNone(result.anonymized_query)
+
+    def test_cloud_action_records_payload_mode(self):
+        result = self.handler.complete("This is a complex question")
+        self.assertEqual(result.action, RoutingAction.CLOUD)
+        self.assertEqual(result.cloud_payload_mode, "raw")
+
+    def test_cloud_pii_strip_records_payload_mode(self):
+        router = CactusRouter()
+        router.register(ClinicalPolicy())
+
+        handler = RoutedCompletionHandler(
+            router=router,
+            local_complete=lambda q: ("Local", 0.3),
+            cloud_complete=mock_cloud_complete,
+            signal_provider=self.signals,
+        )
+
+        profile = PIIProfile(patient_name="John Doe", medications=["lisinopril"])
+        result = handler.complete(
+            "John Doe takes lisinopril 10mg",
+            pii_profile=profile,
+        )
+
+        self.assertEqual(result.action, RoutingAction.CLOUD_PII_STRIP)
+        self.assertEqual(result.cloud_payload_mode, "stripped")
+
     def test_result_includes_scores(self):
         result = self.handler.complete("Test query")
         self.assertIsInstance(result.scores, dict)

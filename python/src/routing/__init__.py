@@ -6,7 +6,11 @@ from .policy import RoutingPolicy, PolicyResult
 from .router import CactusRouter
 from .pii import PIIStripper, PIIProfile
 from .signals import SignalProvider, default_signals
-from .integration import RoutedCompletionHandler, RoutedCompletion
+from .integration import (
+    RoutedCompletionHandler,
+    RoutedCompletion,
+    CloudPayloadMode,
+)
 
 __all__ = [
     "RoutingContext",
@@ -20,4 +24,5 @@ __all__ = [
     "default_signals",
     "RoutedCompletionHandler",
     "RoutedCompletion",
+    "CloudPayloadMode",
 ]
