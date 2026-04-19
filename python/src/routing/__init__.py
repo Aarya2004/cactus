@@ -11,6 +11,7 @@ from .integration import (
     RoutedCompletion,
     CloudPayloadMode,
 )
+from .engine_integration import routed_complete, RoutedEngineCompletion
 
 __all__ = [
     "RoutingContext",
@@ -25,4 +26,6 @@ __all__ = [
     "RoutedCompletionHandler",
     "RoutedCompletion",
     "CloudPayloadMode",
+    "routed_complete",
+    "RoutedEngineCompletion",
 ]
