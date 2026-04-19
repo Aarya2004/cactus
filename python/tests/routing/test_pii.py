@@ -96,6 +96,14 @@ class TestPIIStripper(unittest.TestCase):
         self.assertNotIn("123 Main Street", result)
         self.assertIn("[ADDRESS]", result)
 
+    def test_preserves_dates(self):
+        """Dates must not be redacted as phone numbers."""
+        text = "Symptoms started on 2026-04-18 and worsened by 2026-04-19"
+        result = self.stripper.strip(text, self.profile)
+        self.assertIn("2026-04-18", result)
+        self.assertIn("2026-04-19", result)
+        self.assertNotIn("[PHONE]", result)
+
     def test_preserves_medications(self):
         text = "Can I take ibuprofen with my lisinopril and atorvastatin?"
         result = self.stripper.strip(text, self.profile)
