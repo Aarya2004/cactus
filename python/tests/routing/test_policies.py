@@ -45,6 +45,32 @@ class TestThresholdPolicy(unittest.TestCase):
         policy = ThresholdPolicy()
         self.assertEqual(policy._threshold, 0.7)
 
+    def test_threshold_none_defers_to_model_default_in_context(self):
+        """When threshold=None, ThresholdPolicy reads the model-specific default
+        from context.metadata['model_default_confidence_threshold']. This lets
+        callers preserve the engine's per-model default behavior instead of
+        forcing a hardcoded 0.7 on every model."""
+        policy = ThresholdPolicy(confidence_threshold=None)
+
+        ctx_below = RoutingContext(
+            query="test",
+            confidence=0.6,
+            metadata={"model_default_confidence_threshold": 0.8},
+        )
+        ctx_above = RoutingContext(
+            query="test",
+            confidence=0.85,
+            metadata={"model_default_confidence_threshold": 0.8},
+        )
+
+        self.assertEqual(policy.decide(policy.score(ctx_below)), RoutingAction.CLOUD)
+        self.assertEqual(policy.decide(policy.score(ctx_above)), RoutingAction.LOCAL)
+
+    def test_threshold_none_falls_back_to_0_7_without_metadata(self):
+        policy = ThresholdPolicy(confidence_threshold=None)
+        ctx = RoutingContext(query="test", confidence=0.75)
+        self.assertEqual(policy.decide(policy.score(ctx)), RoutingAction.LOCAL)
+
 
 class TestBatteryAwarePolicy(unittest.TestCase):
 
